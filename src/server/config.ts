@@ -12,6 +12,8 @@ dotenv.config();
 export interface ServerEnvConfig {
   telegramBotToken: string;
   telegramBotUsername: string;
+  telegramRequiredGroup: string;
+  telegramGroupLink: string;
   mongoDbUri: string;
   mongoDbUsername?: string;
   mongoDbPassword?: string;
@@ -29,6 +31,8 @@ export function validateAndGetEnvConfig(): ServerEnvConfig {
 
   const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
   const telegramBotUsername = process.env.TELEGRAM_BOT_USERNAME;
+  const telegramRequiredGroup = process.env.TELEGRAM_REQUIRED_GROUP || '@ProfileNexus_Updates';
+  const telegramGroupLink = process.env.TELEGRAM_GROUP_LINK || 'https://t.me/+k6ofO5RQueo3ZjZl';
   const mongoDbUri = process.env.MONGODB_URI;
   const jwtSecret = process.env.JWT_SECRET;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000';
@@ -77,6 +81,8 @@ ${missingVars.map((v) => `  ❌ ${v}`).join('\n')}
   return {
     telegramBotToken: telegramBotToken!,
     telegramBotUsername: telegramBotUsername!,
+    telegramRequiredGroup,
+    telegramGroupLink,
     mongoDbUri: mongoDbUri!,
     mongoDbUsername: process.env.MONGODB_USERNAME,
     mongoDbPassword: process.env.MONGODB_PASSWORD,

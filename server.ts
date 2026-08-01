@@ -5,6 +5,7 @@ import { connectToDatabase, getDatabaseStatus } from './src/server/db';
 import { verifyTelegramAuthPayload } from './src/server/telegram';
 import { signJwtToken, createAuthMiddleware, adminOnlyMiddleware, AuthenticatedRequest } from './src/server/auth';
 import { UserModel, ToolLogModel, AppSettingsModel } from './src/server/models';
+import { getBotReplyKeyboard, sendTelegramBotMessage, handleTelegramWebhookUpdate } from './src/server/bot';
 
 // Step 1: Validate Environment Variables (Throws clear error if missing)
 const config = validateAndGetEnvConfig();
@@ -69,26 +70,10 @@ async function fetchTelegramUserProfilePhoto(telegramId: string, botToken: strin
 // Helper for sending automated Telegram Bot welcome direct message
 async function sendTelegramBotDirectMessage(telegramId: string, username: string, creditBalance: number, referralCode: string, botToken: string) {
   try {
-    const text = `🎉 <b>Welcome to ProfileNexus Suite!</b>\n\nHi <b>@${username}</b>,\nYour Telegram account has been successfully authenticated with ProfileNexus Suite!\n\n💰 <b>Current Balance:</b> ${creditBalance} Credits Active\n🔗 <b>Your Telegram Referral Link:</b>\nhttps://t.me/${config.telegramBotUsername}?start=${referralCode}\n\n<i>Share your referral link with colleagues on Telegram to earn +500 Credits per valid signup!</i>`;
+    const text = `🎉 <b>Welcome to ProfileNexus Suite!</b>\n\nHi <b>@${username}</b>,\nYour Telegram account has been successfully authenticated with ProfileNexus Suite!\n\n💰 <b>Current Balance:</b> <code>${creditBalance} Credits Active</code>\n🔗 <b>Your Telegram Referral Link:</b>\n<code>https://t.me/${config.telegramBotUsername}?start=${referralCode}</code>\n\n<i>Share your referral link with colleagues on Telegram to earn +500 Credits per valid signup!</i>`;
 
-    const reply_markup = {
-      inline_keyboard: [
-        [
-          { text: "🚀 Open ProfileNexus App", url: "http://localhost:3000" }
-        ]
-      ]
-    };
-
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: telegramId,
-        text,
-        parse_mode: 'HTML',
-        reply_markup,
-      }),
-    });
+    const reply_markup = getBotReplyKeyboard(config.appUrl);
+    await sendTelegramBotMessage(telegramId, text, reply_markup, botToken);
   } catch (e) {
     console.error('Error sending Telegram bot notification:', e);
   }
@@ -97,6 +82,27 @@ async function sendTelegramBotDirectMessage(telegramId: string, username: string
 // -----------------------------------------------------------------------------
 // Public Endpoints
 // -----------------------------------------------------------------------------
+
+// Telegram Webhook Handler (Receives Bot updates & button clicks)
+app.post(['/api/telegram/webhook', '/api/bot/webhook'], async (req: Request, res: Response) => {
+  try {
+    const update = req.body;
+    const result = await handleTelegramWebhookUpdate(update, config);
+    return res.json({ ok: true, result });
+  } catch (error: any) {
+    console.error('Telegram webhook error:', error);
+    return res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+app.get(['/api/telegram/webhook', '/api/bot/webhook'], (req: Request, res: Response) => {
+  return res.json({
+    status: 'active',
+    botUsername: `@${config.telegramBotUsername}`,
+    appUrl: config.appUrl,
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // System Health & Config
 app.get('/api/health', async (req: Request, res: Response) => {
