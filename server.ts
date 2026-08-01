@@ -355,8 +355,8 @@ app.get('/api/admin/dashboard', authMiddleware, adminOnlyMiddleware, async (req:
   }
 });
 
-// Start Express Server
-if (process.env.NODE_ENV !== 'test') {
+// Start Express Server (standalone local execution)
+if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   app.listen(config.port, () => {
     console.log(`
 ================================================================================
