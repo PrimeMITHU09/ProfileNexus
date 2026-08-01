@@ -3,21 +3,52 @@ import { UserModel } from './models';
 import { ServerEnvConfig } from './config';
 
 /**
- * Returns the official 6-row Telegram bot reply keyboard layout.
+ * Returns the Inline Keyboard attached to the Welcome Message bubble.
+ * Includes "🚀 Open App" and "📢 Join Community".
+ */
+export function getStartInlineKeyboard(appUrl: string, groupLink: string) {
+  const isHttps = appUrl && appUrl.startsWith('https://');
+  const openAppButton: any = { text: '🚀 Open App' };
+  if (isHttps) {
+    openAppButton.web_app = { url: appUrl };
+  } else {
+    openAppButton.url = appUrl || 'https://profilenexus.vercel.app';
+  }
+
+  const cleanGroup = groupLink.startsWith('http')
+    ? groupLink
+    : `https://t.me/${groupLink.replace(/^@/, '')}`;
+
+  return {
+    inline_keyboard: [
+      [
+        openAppButton,
+        { text: '📢 Join Community', url: cleanGroup }
+      ]
+    ]
+  };
+}
+
+/**
+ * Returns the Custom Reply Keyboard under the input box with quick action buttons:
+ * - [🆔 Identity Generator] [🔐 2FA OTP]
+ * - [📧 Temp Mail] [📂 Saved Vault]
+ * - [🚀 Open App] [👨‍💻 ADMIN]
+ * - [👤 My Profile] [📢 Updates / Channel]
+ * - [❓ Help / Commands]
  */
 export function getBotReplyKeyboard(appUrl: string) {
   const isHttps = appUrl && appUrl.startsWith('https://');
-  const launchButton: any = { text: '🚀 Launch App' };
+  const launchButton: any = { text: '🚀 Open App' };
   if (isHttps) {
     launchButton.web_app = { url: appUrl };
   }
 
   return {
     keyboard: [
-      [launchButton],
-      [{ text: '👨‍💻 ADMIN' }, { text: '🔐 2FA Generator' }],
-      [{ text: '📋 Total Copy' }, { text: '🆔 Quick Identity' }],
-      [{ text: '🎲 Temp Mail' }, { text: '🔑 Saved Vault' }],
+      [{ text: '🆔 Identity Generator' }, { text: '🔐 2FA OTP' }],
+      [{ text: '📧 Temp Mail' }, { text: '📂 Saved Vault' }],
+      [launchButton, { text: '👨‍💻 ADMIN' }],
       [{ text: '👤 My Profile' }, { text: '📢 Updates / Channel' }],
       [{ text: '❓ Help / Commands' }],
     ],
@@ -55,13 +86,10 @@ export async function checkGroupMembership(
   try {
     let targetChatId = process.env.TELEGRAM_CHAT_ID || groupUsernameOrId;
 
-    // If chat ID is an invite link (e.g. https://t.me/+k6ofO5RQueo3ZjZl),
-    // getChatMember API cannot query invite link URLs directly.
     if (targetChatId.startsWith('http') || targetChatId.startsWith('+')) {
       if (process.env.TELEGRAM_CHAT_ID && !process.env.TELEGRAM_CHAT_ID.startsWith('http')) {
         targetChatId = process.env.TELEGRAM_CHAT_ID;
       } else {
-        // Invite link used without numeric chat ID: bypass lock so user gets the 6-row keyboard
         return true;
       }
     }
@@ -79,8 +107,6 @@ export async function checkGroupMembership(
       return ['creator', 'administrator', 'member', 'restricted'].includes(status);
     }
 
-    // If getChatMember API returned an error (e.g. chat not found or bot not admin),
-    // fallback to true so the 6-row Reply Keyboard is displayed rather than permanently blocking the user.
     console.warn(`⚠️ [Telegram Group Check] getChatMember notice: ${data.description || 'chat check bypassed'}`);
     return true;
   } catch (e) {
@@ -235,7 +261,6 @@ export async function handleTelegramWebhookUpdate(update: any, config: ServerEnv
         config.telegramBotToken
       );
 
-      // Query User DB for Referral Code / Credits
       let dbUser = null;
       try {
         dbUser = await (UserModel as any).findOne({
@@ -246,10 +271,15 @@ export async function handleTelegramWebhookUpdate(update: any, config: ServerEnv
       const refCode = dbUser?.referralCode || `REF${String(fromId).slice(-4)}`;
       const credits = dbUser?.creditBalance ?? 50;
 
-      const welcomeText = `🎉 <b>WELCOME TO PROFILE NEXUS!</b>\nHello <b>${firstName}</b>! 👋\nWelcome to the ultimate Identity & Automation Suite.\n\n💰 <b>Credit Balance:</b> <code>${credits} Credits</code>\n🔗 <b>Referral Link:</b> <code>https://t.me/${config.telegramBotUsername}?start=${refCode}</code>\n\n<i>Explore all features using the quick menu below!</i>`;
+      // 1. Send Welcome Message with Inline Keyboard
+      const welcomeText = `🎉 <b>WELCOME TO PROFILE NEXUS!</b>\nHello <b>${firstName}</b>! 👋\nWelcome to the ultimate Identity & Automation Suite.\n\n💰 <b>Credit Balance:</b> <code>${credits} Credits</code>\n🔗 <b>Referral Link:</b> <code>https://t.me/${config.telegramBotUsername}?start=${refCode}</code>\n\n<i>Tap <b>🚀 Open App</b> or join our community below!</i>`;
+      const inlineKeyboard = getStartInlineKeyboard(config.appUrl, config.telegramGroupLink);
+      await sendTelegramBotMessage(chatId, welcomeText, inlineKeyboard, config.telegramBotToken);
 
-      const mainKeyboard = getBotReplyKeyboard(config.appUrl);
-      await sendTelegramBotMessage(chatId, welcomeText, mainKeyboard, config.telegramBotToken);
+      // 2. Send Quick Action Menu with Custom Reply Keyboard under input box
+      const menuText = `⚡ <b>Quick Action Menu Unlocked!</b>\n\nSelect any tool from your keyboard below:`;
+      const replyKeyboard = getBotReplyKeyboard(config.appUrl);
+      await sendTelegramBotMessage(chatId, menuText, replyKeyboard, config.telegramBotToken);
 
       return { success: true, action: 'membership_verified_and_unlocked' };
     }
@@ -267,7 +297,6 @@ export async function handleTelegramWebhookUpdate(update: any, config: ServerEnv
   const username = message.from?.username || message.from?.first_name || `user_${telegramId}`;
   const rawText = (message.text || '').trim();
 
-  // Query User from Database
   let dbUser = null;
   try {
     dbUser = await (UserModel as any).findOne({
@@ -290,10 +319,10 @@ export async function handleTelegramWebhookUpdate(update: any, config: ServerEnv
     return { success: false, action: 'force_join_required' };
   }
 
-  // User is Verified -> Load Full 6-Row Reply Keyboard
-  const mainKeyboard = getBotReplyKeyboard(config.appUrl);
+  // Loaded Reply Keyboard for Verified Users
+  const replyKeyboard = getBotReplyKeyboard(config.appUrl);
 
-  // Handle 2FA Secret Key submission (either command /2fa <secret> or raw secret text)
+  // Handle 2FA Secret Key submission
   const is2faCmd = rawText.toLowerCase().startsWith('/2fa');
   const isRawBase32 = /^[A-Za-z2-7\s]{8,}$/.test(rawText) && !rawText.startsWith('/') && !rawText.includes(' ');
 
@@ -304,13 +333,13 @@ export async function handleTelegramWebhookUpdate(update: any, config: ServerEnv
       const totpResult = generate2FAOtp(potentialSecret);
       if (totpResult) {
         const text = `🔐 <b>2FA OTP Code Generated</b>\n\n🔑 <b>Secret Key:</b> <code>${potentialSecret.toUpperCase()}</code>\n⚡ <b>Current 2FA OTP:</b> <code>${totpResult.otp}</code>\n⏱️ <b>Expires in:</b> <code>${totpResult.remaining} seconds</code>\n\n<i>Tap on the 6-digit OTP code above to copy it instantly to your clipboard!</i>`;
-        await sendTelegramBotMessage(chatId, text, mainKeyboard, config.telegramBotToken);
+        await sendTelegramBotMessage(chatId, text, replyKeyboard, config.telegramBotToken);
         return { success: true, action: '2fa_generated' };
       }
     }
 
     const text = `🔐 <b>2FA Authenticator & OTP Generator</b>\n\nSend your 2FA Secret Key (Base32 format) to generate a 6-digit OTP code.\n\n<b>Usage Examples:</b>\n• Send key directly: <code>JBSWY3DPEHPK3PXP</code>\n• Use command: <code>/2fa JBSWY3DPEHPK3PXP</code>\n\n🔑 <i>Send your secret key in your next message!</i>`;
-    await sendTelegramBotMessage(chatId, text, mainKeyboard, config.telegramBotToken);
+    await sendTelegramBotMessage(chatId, text, replyKeyboard, config.telegramBotToken);
     return { success: true, action: '2fa_prompt' };
   }
 
@@ -319,66 +348,71 @@ export async function handleTelegramWebhookUpdate(update: any, config: ServerEnv
 
   if (rawText === '👨‍💻 ADMIN' || textLower.includes('admin') || textLower === '/admin') {
     const text = `👨‍💻 <b>ProfileNexus Administrator Support</b>\n\nFor direct support, custom features, VIP access, or admin privileges, contact our official administrator:\n\n👤 <b>Admin Handle:</b> @prime8088\n⚡ <b>Support Status:</b> 🟢 24/7 Active\n🌐 <b>Web Portal:</b> <a href="${config.appUrl}">${config.appUrl}</a>\n\n<i>Feel free to message @prime8088 directly anytime!</i>`;
-    await sendTelegramBotMessage(chatId, text, mainKeyboard, config.telegramBotToken);
+    await sendTelegramBotMessage(chatId, text, replyKeyboard, config.telegramBotToken);
     return { success: true, action: 'admin' };
   }
 
-  if (rawText === '🔐 2FA Generator') {
+  if (rawText === '🔐 2FA OTP' || rawText === '🔐 2FA Generator' || textLower.includes('2fa')) {
     const text = `🔐 <b>2FA Authenticator & OTP Generator</b>\n\nSend your 2FA Secret Key (Base32 format) to generate a 6-digit OTP code.\n\n<b>Usage Examples:</b>\n• Send secret directly: <code>JBSWY3DPEHPK3PXP</code>\n• Or use command: <code>/2fa JBSWY3DPEHPK3PXP</code>\n\n🔑 <i>Send your secret key in your next message!</i>`;
-    await sendTelegramBotMessage(chatId, text, mainKeyboard, config.telegramBotToken);
+    await sendTelegramBotMessage(chatId, text, replyKeyboard, config.telegramBotToken);
     return { success: true, action: '2fa_menu' };
   }
 
   if (rawText === '📋 Total Copy' || textLower.includes('total copy') || textLower === '/stats') {
     const totalGen = dbUser?.totalGenerated || 12;
     const totalCop = dbUser?.totalCopied || 48;
-    const text = `📋 <b>ProfileNexus Copy & Usage Statistics</b>\n\n📊 <b>Your Copy History Summary:</b>\n• 👤 <b>Identities Generated:</b> <code>${totalGen}</code>\n• 📋 <b>Total Items Copied:</b> <code>${totalCop}</code>\n• 🔑 <b>2FA Tokens Created:</b> <code>8</code>\n• ⚡ <b>Total Operations:</b> <code>${totalGen + totalCop}</code>\n\n💡 <i>All copied items are saved temporarily. Use <b>🔑 Saved Vault</b> to view stored entries!</i>`;
-    await sendTelegramBotMessage(chatId, text, mainKeyboard, config.telegramBotToken);
+    const text = `📋 <b>ProfileNexus Copy & Usage Statistics</b>\n\n📊 <b>Your Copy History Summary:</b>\n• 👤 <b>Identities Generated:</b> <code>${totalGen}</code>\n• 📋 <b>Total Items Copied:</b> <code>${totalCop}</code>\n• 🔑 <b>2FA Tokens Created:</b> <code>8</code>\n• ⚡ <b>Total Operations:</b> <code>${totalGen + totalCop}</code>\n\n💡 <i>All copied items are saved temporarily. Use <b>📂 Saved Vault</b> to view stored entries!</i>`;
+    await sendTelegramBotMessage(chatId, text, replyKeyboard, config.telegramBotToken);
     return { success: true, action: 'total_copy' };
   }
 
-  if (rawText === '🆔 Quick Identity' || textLower.includes('quick identity') || textLower === '/identity' || textLower === '/id') {
+  if (rawText === '🆔 Identity Generator' || rawText === '🆔 Quick Identity' || textLower.includes('identity') || textLower === '/id') {
     const id = generateQuickIdentity();
     const text = `🆔 <b>Quick Identity Generator</b> (🇺🇸 USA)\n\n👤 <b>Full Name:</b> <code>${id.name}</code>\n📅 <b>Date of Birth:</b> <code>${id.dob}</code> (Age: ${id.age})\n🏠 <b>Address:</b> <code>${id.addr}</code>\n📞 <b>Phone:</b> <code>${id.phone}</code>\n📧 <b>Email:</b> <code>${id.email}</code>\n💳 <b>User Tag:</b> <code>${id.userTag}</code>\n\n<i>Tap any monospace text above to copy directly to your clipboard!</i>`;
-    await sendTelegramBotMessage(chatId, text, mainKeyboard, config.telegramBotToken);
+    await sendTelegramBotMessage(chatId, text, replyKeyboard, config.telegramBotToken);
     return { success: true, action: 'quick_identity' };
   }
 
-  if (rawText === '🎲 Temp Mail' || textLower.includes('temp mail') || textLower === '/tempmail') {
+  if (rawText === '📧 Temp Mail' || rawText === '🎲 Temp Mail' || textLower.includes('temp mail') || textLower === '/tempmail') {
     const tempEmail = `nexus_${username.toLowerCase().replace(/[^a-z0-9]/g, '')}_${Math.floor(1000 + Math.random() * 9000)}@tempmail.net`;
-    const text = `🎲 <b>Temporary Email Service</b>\n\n📬 <b>Your Disposable Email Address:</b>\n<code>${tempEmail}</code>\n\n📥 <b>Inbox Status:</b> 🟢 Active & Listening\n⏱️ <b>Auto-Expires in:</b> <code>59:59</code>\n\n💡 <i>Send emails to this address. Re-tap <b>🎲 Temp Mail</b> anytime to refresh inbox status!</i>`;
-    await sendTelegramBotMessage(chatId, text, mainKeyboard, config.telegramBotToken);
+    const text = `🎲 <b>Temporary Email Service</b>\n\n📬 <b>Your Disposable Email Address:</b>\n<code>${tempEmail}</code>\n\n📥 <b>Inbox Status:</b> 🟢 Active & Listening\n⏱️ <b>Auto-Expires in:</b> <code>59:59</code>\n\n💡 <i>Send emails to this address. Re-tap <b>📧 Temp Mail</b> anytime to refresh inbox status!</i>`;
+    await sendTelegramBotMessage(chatId, text, replyKeyboard, config.telegramBotToken);
     return { success: true, action: 'temp_mail' };
   }
 
-  if (rawText === '🔑 Saved Vault' || textLower.includes('saved vault') || textLower === '/vault') {
+  if (rawText === '📂 Saved Vault' || rawText === '🔑 Saved Vault' || textLower.includes('vault') || textLower === '/vault') {
     const text = `🔑 <b>ProfileNexus Saved Vault</b>\n\n🔐 <b>Your Secure Stored Entries:</b>\n\n1. <b>Identity Tag:</b> <code>Tag_${refCode}</code>\n   • Member: <code>${username}</code>\n   • Status: 🟢 Active Stored Profile\n\n2. <b>2FA Secret Key:</b> <code>JBSWY3DPEHPK3PXP</code>\n   • Label: <code>Main Account Auth</code>\n\n💡 <i>All saved entries are encrypted and synced across your account!</i>`;
-    await sendTelegramBotMessage(chatId, text, mainKeyboard, config.telegramBotToken);
+    await sendTelegramBotMessage(chatId, text, replyKeyboard, config.telegramBotToken);
     return { success: true, action: 'saved_vault' };
   }
 
   if (rawText === '👤 My Profile' || textLower.includes('my profile') || textLower === '/profile') {
     const role = dbUser?.role || 'USER';
     const text = `👤 <b>User Profile & Account Info</b>\n\n🆔 <b>Telegram User ID:</b> <code>${telegramId}</code>\n👤 <b>Username:</b> @${username}\n⚡ <b>Account Status:</b> 🟢 <b>${role} Active</b>\n💰 <b>Credit Balance:</b> <code>${credits} Credits</code>\n📊 <b>Total Usage:</b> <code>${dbUser?.totalGenerated || 0} Operations</code>\n\n🔗 <b>Your Telegram Referral Link:</b>\n<code>https://t.me/${config.telegramBotUsername}?start=${refCode}</code>\n\n<i>Share your referral link to earn +500 Credits per valid signup!</i>`;
-    await sendTelegramBotMessage(chatId, text, mainKeyboard, config.telegramBotToken);
+    await sendTelegramBotMessage(chatId, text, replyKeyboard, config.telegramBotToken);
     return { success: true, action: 'my_profile' };
   }
 
   if (rawText === '📢 Updates / Channel' || textLower.includes('updates') || textLower === '/channel') {
     const text = `📢 <b>ProfileNexus Official Channel & Updates</b>\n\nStay informed with official feature updates, security announcements, giveaways, and developer release notes!\n\n📢 <b>Official Channel:</b> @ProfileNexus_Updates\n🌐 <b>Telegram Link:</b> <a href="https://t.me/ProfileNexus_Updates">https://t.me/ProfileNexus_Updates</a>\n\n<i>Join our channel for real-time announcements!</i>`;
-    await sendTelegramBotMessage(chatId, text, mainKeyboard, config.telegramBotToken);
+    await sendTelegramBotMessage(chatId, text, replyKeyboard, config.telegramBotToken);
     return { success: true, action: 'updates_channel' };
   }
 
-  if (rawText === '🚀 Launch App') {
+  if (rawText === '🚀 Open App' || rawText === '🚀 Launch App') {
     const text = `🚀 <b>ProfileNexus Web Suite Active</b>\n\nClick below to launch the full Web Application dashboard:\n\n🌐 <b>Web App Link:</b> <a href="${config.appUrl}">${config.appUrl}</a>`;
-    await sendTelegramBotMessage(chatId, text, mainKeyboard, config.telegramBotToken);
+    await sendTelegramBotMessage(chatId, text, replyKeyboard, config.telegramBotToken);
     return { success: true, action: 'launch_app' };
   }
 
-  // Default /start or /welcome or unknown input -> Professional Welcome Message
-  const welcomeText = `🎉 <b>WELCOME TO PROFILE NEXUS!</b>\nHello <b>${firstName}</b>! 👋\nWelcome to the ultimate Identity & Automation Suite.\n\n💰 <b>Credit Balance:</b> <code>${credits} Credits</code>\n🔗 <b>Referral Link:</b> <code>https://t.me/${config.telegramBotUsername}?start=${refCode}</code>\n\n<i>Explore all features using the quick menu below!</i>`;
+  // Handle /start or /welcome command -> Send both Inline Keyboard & Custom Reply Keyboard
+  const welcomeText = `🎉 <b>WELCOME TO PROFILE NEXUS!</b>\nHello <b>${firstName}</b>! 👋\nWelcome to the ultimate Identity & Automation Suite.\n\n💰 <b>Credit Balance:</b> <code>${credits} Credits</code>\n🔗 <b>Referral Link:</b> <code>https://t.me/${config.telegramBotUsername}?start=${refCode}</code>\n\n<i>Tap <b>🚀 Open App</b> or join our community below!</i>`;
 
-  await sendTelegramBotMessage(chatId, welcomeText, mainKeyboard, config.telegramBotToken);
-  return { success: true, action: 'welcome_message' };
+  const inlineKeyboard = getStartInlineKeyboard(config.appUrl, config.telegramGroupLink);
+  await sendTelegramBotMessage(chatId, welcomeText, inlineKeyboard, config.telegramBotToken);
+
+  const menuText = `⚡ <b>Quick Action Menu Unlocked!</b>\n\nSelect any tool from your keyboard below:`;
+  await sendTelegramBotMessage(chatId, menuText, replyKeyboard, config.telegramBotToken);
+
+  return { success: true, action: 'start_command_with_both_keyboards' };
 }
