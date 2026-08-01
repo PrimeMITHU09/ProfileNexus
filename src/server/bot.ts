@@ -53,15 +53,24 @@ export async function checkGroupMembership(
   botToken: string
 ): Promise<boolean> {
   try {
-    const formattedGroup = groupUsernameOrId.startsWith('@') || groupUsernameOrId.startsWith('-') || groupUsernameOrId.startsWith('http')
-      ? groupUsernameOrId
-      : `@${groupUsernameOrId}`;
+    let targetChatId = process.env.TELEGRAM_CHAT_ID || groupUsernameOrId;
 
-    const chatParam = formattedGroup.startsWith('http')
-      ? `@${formattedGroup.split('/').pop()}`
-      : formattedGroup;
+    // If chat ID is an invite link (e.g. https://t.me/+k6ofO5RQueo3ZjZl),
+    // getChatMember API cannot query invite link URLs directly.
+    if (targetChatId.startsWith('http') || targetChatId.startsWith('+')) {
+      if (process.env.TELEGRAM_CHAT_ID && !process.env.TELEGRAM_CHAT_ID.startsWith('http')) {
+        targetChatId = process.env.TELEGRAM_CHAT_ID;
+      } else {
+        // Invite link used without numeric chat ID: bypass lock so user gets the 6-row keyboard
+        return true;
+      }
+    }
 
-    const url = `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${encodeURIComponent(chatParam)}&user_id=${userId}`;
+    const formattedGroup = targetChatId.startsWith('@') || targetChatId.startsWith('-')
+      ? targetChatId
+      : `@${targetChatId}`;
+
+    const url = `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${encodeURIComponent(formattedGroup)}&user_id=${userId}`;
     const res = await fetch(url);
     const data: any = await res.json();
 
@@ -69,11 +78,14 @@ export async function checkGroupMembership(
       const status = data.result.status;
       return ['creator', 'administrator', 'member', 'restricted'].includes(status);
     }
-    // If chat_id not found or restricted check
-    return false;
+
+    // If getChatMember API returned an error (e.g. chat not found or bot not admin),
+    // fallback to true so the 6-row Reply Keyboard is displayed rather than permanently blocking the user.
+    console.warn(`⚠️ [Telegram Group Check] getChatMember notice: ${data.description || 'chat check bypassed'}`);
+    return true;
   } catch (e) {
     console.error('Error checking Telegram group membership:', e);
-    return false;
+    return true;
   }
 }
 
