@@ -1,11 +1,11 @@
 import express, { Request, Response } from 'express';
 import crypto from 'node:crypto';
-import { validateAndGetEnvConfig } from './src/server/config';
-import { connectToDatabase, getDatabaseStatus } from './src/server/db';
-import { verifyTelegramAuthPayload } from './src/server/telegram';
-import { signJwtToken, createAuthMiddleware, adminOnlyMiddleware, AuthenticatedRequest } from './src/server/auth';
-import { UserModel, ToolLogModel, AppSettingsModel } from './src/server/models';
-import { getBotReplyKeyboard, sendTelegramBotMessage, handleTelegramWebhookUpdate } from './src/server/bot';
+import { validateAndGetEnvConfig } from './src/server/config.js';
+import { connectToDatabase, getDatabaseStatus } from './src/server/db.js';
+import { verifyTelegramAuthPayload } from './src/server/telegram.js';
+import { signJwtToken, createAuthMiddleware, adminOnlyMiddleware, AuthenticatedRequest } from './src/server/auth.js';
+import { UserModel, ToolLogModel, AppSettingsModel } from './src/server/models.js';
+import { getBotReplyKeyboard, sendTelegramBotMessage, handleTelegramWebhookUpdate } from './src/server/bot.js';
 
 // Step 1: Validate Environment Variables (Throws clear error if missing)
 const config = validateAndGetEnvConfig();
