@@ -84,24 +84,19 @@ async function sendTelegramBotDirectMessage(telegramId: string, username: string
 // -----------------------------------------------------------------------------
 
 // Telegram Webhook Handler (Receives Bot updates & button clicks)
-app.post(['/api/telegram/webhook', '/api/bot/webhook'], async (req: Request, res: Response) => {
+app.post(['/api/bot', '/api/telegram/webhook', '/api/bot/webhook'], async (req: Request, res: Response) => {
   try {
     const update = req.body;
     const result = await handleTelegramWebhookUpdate(update, config);
-    return res.json({ ok: true, result });
+    return res.json({ status: 'ok', result });
   } catch (error: any) {
     console.error('Telegram webhook error:', error);
-    return res.status(500).json({ ok: false, error: error.message });
+    return res.status(200).json({ status: 'ok', error: error.message });
   }
 });
 
-app.get(['/api/telegram/webhook', '/api/bot/webhook'], (req: Request, res: Response) => {
-  return res.json({
-    status: 'active',
-    botUsername: `@${config.telegramBotUsername}`,
-    appUrl: config.appUrl,
-    timestamp: new Date().toISOString(),
-  });
+app.get(['/api/bot', '/api/telegram/webhook', '/api/bot/webhook'], (req: Request, res: Response) => {
+  return res.send('Bot backend is running!');
 });
 
 // System Health & Config
