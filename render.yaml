@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: profilenexus-api-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npx tsx server.ts
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_USERNAME
+        value: ProfileNexus_bot
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false

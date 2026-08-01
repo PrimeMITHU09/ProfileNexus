@@ -1,0 +1,6 @@
+{
+  "name": "ProfileNexus",
+  "description": "SaaS Fake Name and Social Media Profile Generator for Facebook and Instagram with editable right-side tag, non-repeating name details, and one-click copy features.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
