@@ -78,9 +78,11 @@ export type UserRole = 'USER' | 'ADMIN';
 
 export interface AuthUser {
   id: string;
+  systemUid?: string;
   name: string;
   email: string;
   password?: string;
+  hasPassword?: boolean;
   telegramUsername?: string;
   avatarUrl: string;
   avatarType?: 'image' | 'video'; // supports live video profile (MP4/WebM profile stream)

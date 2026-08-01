@@ -3,9 +3,11 @@ import mongoose, { Schema, Document } from 'mongoose';
 // 1. User Interface & Schema
 export interface IUser extends Document {
   telegramId?: string;
+  systemUid?: string;
   username: string;
   email?: string;
   passwordHash?: string;
+  hasPassword?: boolean;
   avatarUrl?: string;
   avatarType?: 'image' | 'video';
   videoAvatarUrl?: string;
@@ -22,12 +24,19 @@ export interface IUser extends Document {
   createdAt: Date;
 }
 
+export function generateSystemUid(): string {
+  const num = Math.floor(10000 + Math.random() * 90000);
+  return `NEX-${num}`;
+}
+
 const UserSchema: Schema = new Schema(
   {
     telegramId: { type: String, sparse: true, index: true },
+    systemUid: { type: String, unique: true, sparse: true },
     username: { type: String, required: true, unique: true },
     email: { type: String, sparse: true },
     passwordHash: { type: String },
+    hasPassword: { type: Boolean, default: false },
     avatarUrl: { type: String, default: '' },
     avatarType: { type: String, enum: ['image', 'video'], default: 'image' },
     videoAvatarUrl: { type: String, default: '' },

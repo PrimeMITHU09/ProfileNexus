@@ -115,8 +115,14 @@ export function createAuthMiddleware(jwtSecret: string) {
  * Express middleware to restrict access to ADMIN role only
  */
 export function adminOnlyMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  if (!req.user || req.user.role !== 'ADMIN') {
-    return res.status(403).json({ error: 'Forbidden: Admin privilege required' });
+  const adminHandle = (process.env.ADMIN_TELEGRAM_USERNAME || 'prime8088').toLowerCase();
+  const isAdmin = req.user && req.user.role === 'ADMIN' && (
+    (req.user.telegramUsername && req.user.telegramUsername.toLowerCase() === adminHandle) ||
+    (req.user.name && req.user.name.toLowerCase() === adminHandle)
+  );
+
+  if (!isAdmin) {
+    return res.status(403).json({ error: 'Forbidden: Admin Control Panel is strictly restricted to Super Admin (@Prime8088)' });
   }
   next();
 }

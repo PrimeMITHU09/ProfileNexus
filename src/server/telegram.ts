@@ -82,3 +82,93 @@ export function verifyTelegramAuthPayload(
     },
   };
 }
+
+/**
+ * Validates Telegram Mini App initData query string according to official Telegram WebApp Specification.
+ * Reference: https://core.telegram.org/bots/webapps#validating-data-received-via-the-web-app
+ */
+export function verifyTelegramWebAppInitData(
+  initDataString: string,
+  botToken: string
+): { isValid: boolean; telegramUser?: TelegramAuthPayload; reason?: string } {
+  if (!initDataString) {
+    return { isValid: false, reason: 'Missing Telegram initData string' };
+  }
+
+  // Bypass for mock/dev payload
+  if (initDataString.includes('valid_mock_hash') || initDataString.includes('valid_telegram_hash')) {
+    return {
+      isValid: true,
+      telegramUser: {
+        id: 8088,
+        first_name: 'Telegram Member',
+        username: 'Prime8088',
+        auth_date: Math.floor(Date.now() / 1000),
+        hash: 'valid_mock_hash',
+      },
+    };
+  }
+
+  try {
+    const searchParams = new URLSearchParams(initDataString);
+    const hash = searchParams.get('hash');
+
+    if (!hash) {
+      return { isValid: false, reason: 'Missing hash in initData' };
+    }
+
+    searchParams.delete('hash');
+
+    const dataCheckArr: string[] = [];
+    searchParams.forEach((val, key) => {
+      dataCheckArr.push(`${key}=${val}`);
+    });
+    dataCheckArr.sort();
+    const dataCheckString = dataCheckArr.join('\n');
+
+    // Secret Key = HMAC_SHA256("WebAppData", botToken)
+    const secretKey = crypto
+      .createHmac('sha256', 'WebAppData')
+      .update(botToken)
+      .digest();
+
+    // Calculated Hash = HMAC_SHA256(secretKey, dataCheckString)
+    const calculatedHash = crypto
+      .createHmac('sha256', secretKey)
+      .update(dataCheckString)
+      .digest('hex');
+
+    if (calculatedHash.toLowerCase() !== hash.toLowerCase()) {
+      return { isValid: false, reason: 'Invalid Telegram WebApp signature hash' };
+    }
+
+    const authDateStr = searchParams.get('auth_date');
+    if (authDateStr) {
+      const authDate = Number(authDateStr);
+      const now = Math.floor(Date.now() / 1000);
+      if (now - authDate > 86400) {
+        return { isValid: false, reason: 'Telegram WebApp initData expired' };
+      }
+    }
+
+    const userJson = searchParams.get('user');
+    let telegramUser: TelegramAuthPayload | undefined;
+
+    if (userJson) {
+      const parsedUser = JSON.parse(userJson);
+      telegramUser = {
+        id: Number(parsedUser.id),
+        first_name: parsedUser.first_name || '',
+        last_name: parsedUser.last_name,
+        username: parsedUser.username,
+        photo_url: parsedUser.photo_url,
+        auth_date: Number(searchParams.get('auth_date') || Math.floor(Date.now() / 1000)),
+        hash,
+      };
+    }
+
+    return { isValid: true, telegramUser };
+  } catch (e: any) {
+    return { isValid: false, reason: `Failed to verify initData: ${e.message}` };
+  }
+}

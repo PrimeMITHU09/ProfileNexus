@@ -2,9 +2,9 @@ import express, { Request, Response } from 'express';
 import crypto from 'node:crypto';
 import { validateAndGetEnvConfig } from './src/server/config.js';
 import { connectToDatabase, getDatabaseStatus } from './src/server/db.js';
-import { verifyTelegramAuthPayload } from './src/server/telegram.js';
+import { verifyTelegramAuthPayload, verifyTelegramWebAppInitData } from './src/server/telegram.js';
 import { signJwtToken, createAuthMiddleware, adminOnlyMiddleware, AuthenticatedRequest } from './src/server/auth.js';
-import { UserModel, ToolLogModel, AppSettingsModel } from './src/server/models.js';
+import { UserModel, ToolLogModel, AppSettingsModel, generateSystemUid } from './src/server/models.js';
 import { getBotReplyKeyboard, sendTelegramBotMessage, handleTelegramWebhookUpdate } from './src/server/bot.js';
 
 // Step 1: Validate Environment Variables (Throws clear error if missing)
@@ -156,12 +156,18 @@ app.get('/api/proxy-avatar', async (req: Request, res: Response) => {
   }
 });
 
-// Telegram Authentication & Multi-Account IP Guard
+// Telegram Authentication & WebApp Signature Verification
 app.post('/api/auth/telegram', async (req: Request, res: Response) => {
-  const telegramData = req.body;
+  const payload = req.body;
   const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
 
-  const result = verifyTelegramAuthPayload(telegramData, config.telegramBotToken);
+  let result;
+  if (typeof payload === 'string' || payload?.initData) {
+    const initDataStr = typeof payload === 'string' ? payload : payload.initData;
+    result = verifyTelegramWebAppInitData(initDataStr, config.telegramBotToken);
+  } else {
+    result = verifyTelegramAuthPayload(payload, config.telegramBotToken);
+  }
 
   if (!result.isValid || !result.telegramUser) {
     return res.status(400).json({
@@ -173,7 +179,6 @@ app.post('/api/auth/telegram', async (req: Request, res: Response) => {
   const tgUser = result.telegramUser;
   const username = tgUser.username || `user_${tgUser.id}`;
 
-  // Fetch active Telegram Profile Picture from Bot API if not in payload
   let userAvatarUrl = tgUser.photo_url || null;
   if (!userAvatarUrl) {
     try {
@@ -183,9 +188,6 @@ app.post('/api/auth/telegram', async (req: Request, res: Response) => {
       console.log('Telegram Bot API avatar fetch skipped');
     }
   }
-  if (!userAvatarUrl) {
-    userAvatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
-  }
 
   try {
     let existingUser = null;
@@ -193,49 +195,67 @@ app.post('/api/auth/telegram', async (req: Request, res: Response) => {
       existingUser = await (UserModel as any).findOne({
         $or: [{ telegramId: String(tgUser.id) }, { username }],
       }).maxTimeMS(3000);
-    } catch (e) {
-      console.log('MongoDB query fallback');
-    }
+    } catch (e) {}
+
+    const adminUsername = process.env.ADMIN_TELEGRAM_USERNAME || 'prime8088';
+    const isSuperAdmin = username.toLowerCase() === adminUsername.toLowerCase();
+    const role = isSuperAdmin ? 'ADMIN' : 'USER';
 
     if (!existingUser) {
-      const isSuperAdmin = username.toLowerCase() === 'prime8088' || username.toLowerCase() === config.telegramBotUsername.toLowerCase();
-      const role = isSuperAdmin ? 'ADMIN' : 'USER';
+      const systemUid = generateSystemUid();
       const creditBalance = isSuperAdmin ? 9999 : 50;
-      const isUnlimited = isSuperAdmin;
 
       existingUser = {
         _id: 'usr_' + Date.now(),
+        systemUid,
         telegramId: String(tgUser.id),
         username,
         email: `${username}@telegram.org`,
-        avatarUrl: userAvatarUrl,
+        avatarUrl: userAvatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
         registrationIp: clientIp,
         creditBalance,
-        isUnlimited,
+        isUnlimited: isSuperAdmin,
         role,
         referralCode: generateRefCode(username),
+        hasPassword: false,
       };
 
       try {
-        await (UserModel as any).create({
+        const created = await (UserModel as any).create({
           telegramId: String(tgUser.id),
+          systemUid,
           username,
           email: `${username}@telegram.org`,
-          avatarUrl: tgUser.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+          avatarUrl: userAvatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
           registrationIp: clientIp,
           creditBalance,
-          isUnlimited,
+          isUnlimited: isSuperAdmin,
           role,
           referralCode: generateRefCode(username),
+          hasPassword: false,
         });
+        if (created) {
+          existingUser = created;
+        }
       } catch (e) {
         // Fallback user state
       }
+    } else {
+      // Ensure systemUid exists
+      if (!existingUser.systemUid) {
+        const newUid = generateSystemUid();
+        existingUser.systemUid = newUid;
+        try {
+          await (UserModel as any).updateOne({ _id: existingUser._id }, { systemUid: newUid });
+        } catch (e) {}
+      }
+      // Always enforce role strictly
+      existingUser.role = role;
     }
 
     const token = signJwtToken(
       {
-        userId: String(existingUser._id),
+        userId: String(existingUser.systemUid || existingUser._id),
         name: existingUser.username,
         email: existingUser.email || `${username}@telegram.org`,
         role: existingUser.role,
@@ -246,7 +266,6 @@ app.post('/api/auth/telegram', async (req: Request, res: Response) => {
 
     const isFirstTime = !existingUser.passwordHash && !existingUser.hasPassword;
 
-    // Trigger automated Telegram Bot Direct Message Notification
     sendTelegramBotDirectMessage(
       String(tgUser.id),
       username,
@@ -259,7 +278,17 @@ app.post('/api/auth/telegram', async (req: Request, res: Response) => {
       success: true,
       token,
       isFirstTime,
-      user: existingUser,
+      user: {
+        id: existingUser._id,
+        systemUid: existingUser.systemUid,
+        username: existingUser.username,
+        email: existingUser.email,
+        avatarUrl: existingUser.avatarUrl,
+        role: existingUser.role,
+        creditBalance: existingUser.creditBalance,
+        referralCode: existingUser.referralCode,
+        hasPassword: existingUser.hasPassword || !!existingUser.passwordHash,
+      },
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });

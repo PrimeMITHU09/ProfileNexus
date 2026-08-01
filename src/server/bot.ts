@@ -1,6 +1,6 @@
 import * as OTPAuth from 'otpauth';
-import { UserModel } from './models';
-import { ServerEnvConfig } from './config';
+import { UserModel } from './models.js';
+import { ServerEnvConfig } from './config.js';
 
 /**
  * Returns the Inline Keyboard attached to the Welcome Message bubble.
