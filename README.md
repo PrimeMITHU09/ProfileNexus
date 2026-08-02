@@ -86,38 +86,39 @@
 
 ## 🖼️ UI Screenshots
 
-<div align="center">
-
-### 🔐 2FA.Live Authenticator & Live TOTP Engine
-*Generate instant 6-digit 2FA codes with auto-refresh progress bar*
-
-![2FA Authenticator](docs/images/2fa_authenticator.png)
-
----
-
-### 📘 Facebook Account Verification & Extraction
-
-<table>
+<table align="center" width="100%">
+  <!-- ১ম সারি (Row 1) - ৩টি ছবি -->
   <tr>
-    <td width="50%" align="center">
-      <strong>Check Live Facebook UID</strong><br/><br/>
-      <img src="docs/images/fb_uid_checker.png" alt="Check Live Facebook UID" width="100%" />
+    <td width="33.33%" align="center">
+      <strong>📊 Dashboard & Live Analytics</strong><br/><br/>
+      <img src="https://github.com/user-attachments/assets/91981cfc-73f2-4fe7-bad2-e08d1551bcf6" alt="Dashboard" width="100%" />
     </td>
-    <td width="50%" align="center">
-      <strong>Get UID from Facebook Link</strong><br/><br/>
-      <img src="docs/images/fb_uid_extractor.png" alt="Get UID From FB Link" width="100%" />
+    <td width="33.33%" align="center">
+      <strong>👤 Synthetic Profile Generator</strong><br/><br/>
+      <img src="https://github.com/user-attachments/assets/e24f6344-8e57-41c1-b1cd-aef414259f52" alt="Profile Generator" width="100%" />
+    </td>
+    <td width="33.33%" align="center">
+      <strong>🎁 Refer & Earn Program</strong><br/><br/>
+      <img src="https://github.com/user-attachments/assets/6785f3cb-4971-42e8-90c3-f2935cbbe75f" alt="Refer and Earn" width="100%" />
+    </td>
+  </tr>
+
+  <!-- ২য় সারি (Row 2) - ৩টি ছবি -->
+  <tr>
+    <td width="33.33%" align="center">
+      <br/><strong>🔐 2FA Live Authenticator</strong><br/><br/>
+      <img src="https://github.com/user-attachments/assets/600667b3-4b52-4a0e-aa1f-9a6d1fc59ed4" alt="2FA Authenticator" width="100%" />
+    </td>
+    <td width="33.33%" align="center">
+      <br/><strong>🌐 Check IP Geolocation</strong><br/><br/>
+      <img src="https://github.com/user-attachments/assets/7339856a-3243-415b-8c0c-2f3b9ca988c2" alt="Check IP" width="100%" />
+    </td>
+    <td width="33.33%" align="center">
+      <br/><strong>📘 Check Live UID (Facebook)</strong><br/><br/>
+      <img src="https://github.com/user-attachments/assets/babb34a0-20f6-445e-8b92-feec4aca9440" alt="Check FB UID" width="100%" />
     </td>
   </tr>
 </table>
-
----
-
-### 📷 Instagram Live Account Scanner
-*Bulk verify Instagram usernames and UIDs for Active vs Disabled status*
-
-![Check Live Instagram UID](docs/images/ig_uid_checker.png)
-
-</div>
 
 ---
 
