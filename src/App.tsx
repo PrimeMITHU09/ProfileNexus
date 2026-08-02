@@ -26,9 +26,16 @@ import { AuthLandingPage } from './components/AuthLandingPage';
 import { DashboardModal } from './components/DashboardModal';
 import { DashboardSidebarLayout } from './components/DashboardSidebarLayout';
 import { UserProfileModal } from './components/UserProfileModal';
-import { CreditDepletedModal } from './components/CreditDepletedModal';
 import { ToolUsageData } from './components/LiveToolChart';
 import { Toast } from './components/Toast';
+import { Footer } from './components/Footer';
+import { AdBanner } from './components/AdBanner';
+import {
+  PrivacyPolicyModal,
+  TermsOfServiceModal,
+  ContactUsModal,
+  AboutUsModal,
+} from './components/LegalModals';
 import {
   getUserById,
   saveUser,
@@ -276,20 +283,36 @@ export default function App() {
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
   const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
-  const [isWatchingAd, setIsWatchingAd] = useState(false);
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [isContactOpen, setIsContactOpen] = useState(false);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [referredByCode, setReferredByCode] = useState<string>('');
 
-  const handleWatchAdToEarn = () => {
+  // Daily Bonus Handler (+50 Credits once every 24 Hours)
+  const handleClaimDailyBonus = () => {
     if (!currentUser) return;
-    setIsWatchingAd(true);
-    setTimeout(() => {
-      addCreditsToUser(currentUser.id, 5);
-      refreshUserFromStore();
-      setIsWatchingAd(false);
-      setIsCreditModalOpen(false);
-      setToastMessage('🎉 You earned +5 Free Credits for watching sponsored ad!');
-      setTimeout(() => setToastMessage(null), 3000);
-    }, 3000);
+    const key = `profilenexus_last_daily_bonus_${currentUser.id}`;
+    const lastBonusStr = localStorage.getItem(key);
+    const now = Date.now();
+
+    if (lastBonusStr) {
+      const lastBonus = parseInt(lastBonusStr, 10);
+      const hoursPassed = (now - lastBonus) / (1000 * 60 * 60);
+      if (hoursPassed < 24) {
+        const remainingHours = Math.ceil(24 - hoursPassed);
+        setToastMessage(`⏳ Daily Bonus already claimed today! Check back in ${remainingHours}h.`);
+        setTimeout(() => setToastMessage(null), 3500);
+        return;
+      }
+    }
+
+    localStorage.setItem(key, now.toString());
+    addCreditsToUser(currentUser.id, 50);
+    refreshUserFromStore();
+    setIsCreditModalOpen(false);
+    setToastMessage('🎉 Daily Bonus Claimed! +50 Credits added to your balance.');
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
   // Toast notification state
@@ -775,20 +798,15 @@ export default function App() {
 
       <Toast message={toastMessage} />
 
-      {/* Footer */}
-      <footer className="w-full border-t border-slate-200/80 dark:border-slate-800/80 py-6 text-center text-xs text-slate-400 dark:text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p>© {new Date().getFullYear()} ProfileNexus • Non-Repeating Identity Engine</p>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 font-mono font-semibold text-indigo-500">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Social Acc Signup Ready
-            </span>
-          </div>
-        </div>
-      </footer>
+      {/* Global Footer */}
+      <Footer
+        onOpenPrivacy={() => setIsPrivacyOpen(true)}
+        onOpenTerms={() => setIsTermsOpen(true)}
+        onOpenContact={() => setIsContactOpen(true)}
+        onOpenAbout={() => setIsAboutOpen(true)}
+      />
 
-      {/* Zero-Credit AdSense Monetization Modal */}
+      {/* Policy-Compliant Zero-Credit Modal */}
       {isCreditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in">
           <div className="w-full max-w-md bg-slate-900 border border-amber-500/30 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl text-slate-100 relative overflow-hidden">
@@ -806,40 +824,22 @@ export default function App() {
                 </span>
                 <h3 className="text-xl font-black text-white">Out of credits!</h3>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  Out of credits! Watch ad or complete a task to earn more execution credits.
+                  Claim your daily credit bonus or invite colleagues via Telegram to gain execution credits.
                 </p>
               </div>
             </div>
 
-            {/* Simulated Google AdSense Responsive Banner Box */}
-            <div className="p-4 rounded-2xl bg-slate-950 border border-amber-500/20 space-y-3 text-center relative overflow-hidden">
-              <div className="text-[10px] font-mono font-bold text-amber-400/80 uppercase tracking-widest flex items-center justify-center gap-1.5">
-                <Sparkles className="w-3 h-3 text-amber-400" />
-                <span>Google AdSense Sponsored Banner</span>
-              </div>
-
-              {isWatchingAd ? (
-                <div className="py-6 space-y-3">
-                  <RefreshCw className="w-8 h-8 text-amber-400 animate-spin mx-auto" />
-                  <p className="text-xs font-mono font-bold text-slate-200">Playing Sponsored Video Ad... (3s)</p>
-                </div>
-              ) : (
-                <div className="py-4 space-y-2 bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-slate-950 p-4 rounded-xl border border-indigo-500/20">
-                  <div className="text-sm font-extrabold text-white">🚀 Unlock ProfileNexus Identity Suite Pro</div>
-                  <p className="text-[11px] text-slate-300">Non-repeating identities & live 2FA validation suite.</p>
-                </div>
-              )}
-            </div>
+            {/* Official Non-Intrusive AdSense Banner Slot */}
+            <AdBanner slotId="modal-zero-credit-slot" />
 
             {/* Action Buttons */}
             <div className="space-y-3">
               <button
-                onClick={handleWatchAdToEarn}
-                disabled={isWatchingAd}
-                className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-slate-950 font-black text-xs shadow-xl shadow-amber-500/20 transition active:scale-98 disabled:opacity-50 flex items-center justify-center gap-2"
+                onClick={handleClaimDailyBonus}
+                className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-slate-950 font-black text-xs shadow-xl shadow-amber-500/20 transition active:scale-98 flex items-center justify-center gap-2"
               >
                 <Zap className="w-4 h-4 fill-slate-950" />
-                <span>{isWatchingAd ? 'Crediting Account...' : 'Watch Sponsored Ad (+5 Credits)'}</span>
+                <span>Claim Daily Bonus (+50 Credits)</span>
               </button>
 
               <button
@@ -850,7 +850,7 @@ export default function App() {
                 className="w-full py-3 px-5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-lg transition active:scale-98 flex items-center justify-center gap-2"
               >
                 <Gift className="w-4 h-4" />
-                <span>Earn Credits via CPA Tasks</span>
+                <span>Invite Telegram Friends (+500 Cr)</span>
               </button>
 
               <button
@@ -863,6 +863,12 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Legal & Compliance Modals */}
+      <PrivacyPolicyModal isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
+      <TermsOfServiceModal isOpen={isTermsOpen} onClose={() => setIsTermsOpen(false)} />
+      <ContactUsModal isOpen={isContactOpen} onClose={() => setIsContactOpen(false)} />
+      <AboutUsModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
 
     </div>
   );
