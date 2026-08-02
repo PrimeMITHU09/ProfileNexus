@@ -88,8 +88,10 @@
 
 <div align="center">
 
-### 📊 Dashboard & Core Analytics
-*Real-time platform activity metrics, credits manager, and live activity tracking.*
+<!-- 1. Real-time Analytics Banner -->
+<a href="https://git.io/typing-svg">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=20&pause=1000&color=61DAFB&center=true&vCenter=true&width=600&lines=Dashboard+%26+Real-time+Analytics;Platform+Activity+%26+Credits+Tracking" alt="Analytics Title SVG" />
+</a>
 
 <a href="https://github.com/user-attachments/assets/91981cfc-73f2-4fe7-bad2-e08d1551bcf6">
   <img src="https://github.com/user-attachments/assets/91981cfc-73f2-4fe7-bad2-e08d1551bcf6" alt="Dashboard" width="95%" />
@@ -97,7 +99,10 @@
 
 <br/><br/>
 
-### 👤 Profile Generator & 🎁 Referral System
+<!-- 2. Fake Name Generator & Referral Banner -->
+<a href="https://git.io/typing-svg">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=20&pause=1000&color=00F5D4&center=true&vCenter=true&width=600&lines=Fake+Name+Generator+%2B+3+Ideas+Tools;Referral+Program+%26+Credit+Engine" alt="Generator Title SVG" />
+</a>
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/e24f6344-8e57-41c1-b1cd-aef414259f52" alt="Profile Generator" width="48%" />
@@ -107,7 +112,10 @@
 
 <br/>
 
-### 🔐 2FA Authenticator & 🌐 IP Geolocation
+<!-- 3. 2FA Author & IP Geolocation -->
+<a href="https://git.io/typing-svg">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=20&pause=1000&color=FFD166&center=true&vCenter=true&width=600&lines=2FA+Author+%26+Live+TOTP+Engine;Check+IP+Geolocation+%26+Security" alt="2FA Title SVG" />
+</a>
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/600667b3-4b52-4a0e-aa1f-9a6d1fc59ed4" alt="2FA Authenticator" width="48%" />
@@ -117,7 +125,10 @@
 
 <br/>
 
-### 📘 Facebook & Instagram Account Scanners
+<!-- 4. Check Live FB & Instagram UID -->
+<a href="https://git.io/typing-svg">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=20&pause=1000&color=FF477E&center=true&vCenter=true&width=600&lines=Check+Live+FB+UID;Check+Live+Instagram+UID;Instant+Account+Status+Scanners" alt="Scanners Title SVG" />
+</a>
 
 <a href="https://github.com/user-attachments/assets/babb34a0-20f6-445e-8b92-feec4aca9440">
   <img src="https://github.com/user-attachments/assets/babb34a0-20f6-445e-8b92-feec4aca9440" alt="Check FB UID" width="95%" />
