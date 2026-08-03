@@ -26,6 +26,7 @@ import { AuthLandingPage } from './components/AuthLandingPage';
 import { DashboardModal } from './components/DashboardModal';
 import { DashboardSidebarLayout } from './components/DashboardSidebarLayout';
 import { UserProfileModal } from './components/UserProfileModal';
+import { CreditDepletedModal } from './components/CreditDepletedModal';
 import { ToolUsageData } from './components/LiveToolChart';
 import { Toast } from './components/Toast';
 import { Footer } from './components/Footer';
